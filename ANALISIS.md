@@ -82,16 +82,25 @@
 
 ### 4.1 ¿Qué defecto reveló primero una prueba nueva?
 
+El defecto principal revelado fue la **asociatividad incorrecta (a la derecha en vez de a la izquierda)** en operadores de la misma precedencia. Al evaluar una resta encadenada como `"10 - 3 - 2"`, el parser la agrupaba recursivamente hacia la derecha como `10 - (3 - 2)` dando `9`. 
+Adicionalmente, se reveló un segundo defecto: ante expresiones con paréntesis abiertos sin cerrar (como `"(3 + 4"`), el parser intentaba leer más allá de la lista de tokens arrojando un error interno de Python (`IndexError: list index out of range`).
+
 ### 4.2 ¿Por qué el comportamiento observado era incorrecto?
 
-> No basta con "daba mal". Digan contra qué lo están comparando: qué regla,
-> qué línea de la semántica declarada del README.
+Comparado directamente contra la tabla de **Semántica declarada** (Sección 7 del `README.md`):
+1. **Regla de Asociatividad:** *"los operadores de la misma precedencia se asocian a la izquierda"*. El código original hacía llamadas recursivas en `derecha = self._expresion()` y `derecha = self._termino()`, construyendo árboles sesgados a la derecha.
+2. **Regla de Entrada inválida:** *"debe rechazarse con ErrorDeSintaxis, nunca con un error de Python"*. Dejar escapar un `IndexError` incumple el contrato de manejo de errores del intérprete.
 
 ### 4.3 ¿Qué cambio realizaron?
 
 | Defecto | Entrada que lo revela | Daba | Debería dar | Commit rojo | Commit verde |
 |---|---|---|---|---|---|
-| | | | | | |
+| Asociatividad a la derecha en sumas/restas y productos | `"10 - 3 - 2"` | `9` | `5` | `(commit de pruebas)` | `(commit de corrección)` |
+| `IndexError` no capturado ante paréntesis sin cerrar | `"(3 + 4"` | `IndexError` | `ErrorDeSintaxis` | `(commit de pruebas)` | `(commit de corrección)` |
+
+En `src/mini_interprete/parser.py`:
+- Se modificaron `_expresion()` y `_termino()` para sustituir la recursión derecha por un ciclo `while` acumulador (`expresion := termino (('+' | '-') termino)*`). Cada iteración toma el subárbol anterior como hijo izquierdo (`nodo = OperacionBinaria(operador, nodo, derecha)`), garantizando asociatividad a la izquierda.
+- En `_factor()` se validó si `_actual()` es `None` o diferente de `PAR_DER` antes de avanzar, lanzando explícitamente `ErrorDeSintaxis` en lugar de provocar un desbordamiento de índice.
 
 ### 4.4 ¿Cómo saben que la corrección es general y no sólo hace pasar ese ejemplo?
 

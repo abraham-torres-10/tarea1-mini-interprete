@@ -43,20 +43,18 @@ class Parser:
 
     def _expresion(self):
         izquierda = self._termino()
-        actual = self._actual()
-        if actual is not None and actual.tipo in OPERADORES_SUMA:
+        while self._actual() is not None and self._actual().tipo in OPERADORES_SUMA:
             operador = self._avanzar()
-            derecha = self._expresion()
-            return OperacionBinaria(operador.valor, izquierda, derecha)
+            derecha = self._termino()
+            izquierda = OperacionBinaria(operador.valor, izquierda, derecha)
         return izquierda
 
     def _termino(self):
         izquierda = self._factor()
-        actual = self._actual()
-        if actual is not None and actual.tipo in OPERADORES_PRODUCTO:
+        while self._actual() is not None and self._actual().tipo in OPERADORES_PRODUCTO:
             operador = self._avanzar()
-            derecha = self._termino()
-            return OperacionBinaria(operador.valor, izquierda, derecha)
+            derecha = self._factor()
+            izquierda = OperacionBinaria(operador.valor, izquierda, derecha)
         return izquierda
 
     def _factor(self):
@@ -67,9 +65,9 @@ class Parser:
 
         if token.tipo == TipoToken.PAR_IZQ:
             nodo = self._expresion()
-            cierre = self._avanzar()
-            if cierre.tipo != TipoToken.PAR_DER:
-                raise ErrorDeSintaxis("se esperaba ')'", cierre.posicion)
+            if self._actual() is None or self._actual().tipo != TipoToken.PAR_DER:
+                raise ErrorDeSintaxis("se esperaba ')'", token.posicion)
+            self._avanzar()
             return nodo
 
         raise ErrorDeSintaxis(f"token inesperado {token.valor!r}", token.posicion)
