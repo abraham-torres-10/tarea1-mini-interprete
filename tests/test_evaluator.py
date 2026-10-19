@@ -57,7 +57,7 @@ def test_division_entre_cero():
 
 #Entradas inválidas
 
-# Con la semántica declarada, -3 es inválido y lanza ErrorDeSintaxis
+# Con la semántica definida, -3 es inválido y lanza ErrorDeSintaxis
 def test_menos_unario_no_soportado():
     with pytest.raises(ErrorDeSintaxis):
         interpretar("-3")
