@@ -1,9 +1,9 @@
 # Análisis — Tarea 1
 
 **Integrantes:**
-1.
-2.
-3.
+1.Ledesma Rodriguez Alexa
+2.Torres Trejo Abraham
+3.Madrigal Ronces Baruc Santiago 
 
 **Fork:**
 **Rama:**
@@ -19,10 +19,10 @@
 
 | Componente | Qué recibe | Qué entrega | De qué es responsable |
 |---|---|---|---|
-| `lexer` | | | |
-| `parser` | | | |
-| `ast` | | | |
-| `evaluator` | | | |
+| `lexer` |texto | Lista de Token (tipo, valor, posición)| Reconocer números, + - * / y paréntesis, ignorar espacios y  rechazar cualquier otro carácter. No sabe nada de agrupación.|
+| `parser` |Lista de Token | AST (Numero / OperacionBinaria)| Decidir cómo se agrupa la expresión de precedencia, asociatividad a la izquierda y paréntesis y rechaza la sintaxis inválida.|
+| `ast` |Solo maneja datos |Nodos Numero y OperacionBinaria | Representa la estructura de la expresión sin el comportamiento, este es el contrato entre parser y evaluator.|
+| `evaluator` |Un nodo del AST | Un número| Recorrer el árbol de abajo hacia arriba y calcular el valor. Reporta la división entre cero como ErrorDeEvaluacion. |
 
 ### 1.2 ¿Qué recorrido sigue una expresión desde que se recibe como texto hasta que produce un resultado?
 
@@ -31,9 +31,9 @@
 | Etapa | Cómo se ve `(3 + 4) * 2` aquí |
 |---|---|
 | texto | `"(3 + 4) * 2"` |
-| tokens | |
-| AST | |
-| resultado | |
+| tokens |[PAR_IZQ('(',0), NUMERO(3,1), MAS('+',3), NUMERO(4,5), PAR_DER(')',6), POR('*',8), NUMERO(2,10)] |
+| AST | Con el hijo izquierdo + (hijos 3 y 4) e hijo derecho 2 |
+| resultado | 14 |
 
 > Para el renglón del AST, dibújenlo **primero ustedes** y después comprueben
 > con `python3 interprete.py --arbol "(3 + 4) * 2"`. Si su dibujo y el del
@@ -48,7 +48,19 @@
 
 | Prueba | Componente | Comportamiento que verifica | ¿Cuántos operadores usa? | ¿Normal, frontera o inválida? |
 |---|---|---|---|---|
-| | | | | |
+|test_suma|evaluator | 3 + 4 da 7| 1 | normal |
+|test_resta | evaluator | 10 - 3 da 7 | 1 | normal |
+|test_multiplicacion | evaluator | 6 * 7 da 42 | 1 | normal |
+|test_division | evaluator | 10 / 2 da 5 | 1 | normal |
+|test_precedencia_sin_parentesis | evaluator + parser | 3 + 4 * 2 da 11 | 2 distintos | normal |
+|test_precedencia_con_parentesis | evaluator + parser | (3 + 4) * 2 da 14 | 2 distintos | normal |
+|test_tokeniza_un_numero_solo | lexer | 42 es un token en posición 0 | 0 | frontera |
+|test_tokeniza_una_suma | lexer | tipos, valores y posiciones de 3+4 | 1 | normal |
+|test_los_espacios_no_producen_tokens | lexer | los espacios se ignoran | 1 | frontera |
+|test_tokeniza_parentesis | lexer | ( y ) dan PAR_IZQ y PAR_DER | 0 | normal |
+|test_construye_el_arbol_de_una_suma | parser | forma del AST de 3 + 4 | 1 | normal |
+|test_la_multiplicacion_se_agrupa_antes_que_la_suma | parser | 3 + (4 * 2) | 2 distintos | normal |
+|test_los_parentesis_cambian_la_agrupacion | parser | (3 + 4) * 2 | 2 distintos | normal | 
 
 > Llenen la tabla **completa**, con las 13. Es tediosa a propósito: la única
 > forma de saber qué no está cubierto es caracterizar sistemáticamente lo que
