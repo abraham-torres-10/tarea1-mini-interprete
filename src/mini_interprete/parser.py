@@ -41,21 +41,20 @@ class Parser:
         self.pos += 1
         return token
 
-    def _expresion(self):
-        izquierda = self._termino()
-        while self._actual() is not None and self._actual().tipo in OPERADORES_SUMA:
+    def _binaria(self, regla_siguiente, operadores):
+        """Maneja el patrón repetido de operadores binarios asociativos a la izquierda."""
+        izquierda = regla_siguiente()
+        while self._actual() is not None and self._actual().tipo in operadores:
             operador = self._avanzar()
-            derecha = self._termino()
+            derecha = regla_siguiente()
             izquierda = OperacionBinaria(operador.valor, izquierda, derecha)
         return izquierda
 
+    def _expresion(self):
+        return self._binaria(self._termino, OPERADORES_SUMA)
+
     def _termino(self):
-        izquierda = self._factor()
-        while self._actual() is not None and self._actual().tipo in OPERADORES_PRODUCTO:
-            operador = self._avanzar()
-            derecha = self._factor()
-            izquierda = OperacionBinaria(operador.valor, izquierda, derecha)
-        return izquierda
+        return self._binaria(self._factor, OPERADORES_PRODUCTO)
 
     def _factor(self):
         token = self._avanzar()
