@@ -67,7 +67,14 @@
 
 | Prueba (archivo::nombre) | Entrada | Esperado | Categoría | ¿Por qué esa categoría? |
 |---|---|---|---|---|
-| | | | | |
+| tests/test_evaluator.py::test_operaciones_combinadas_con_parentesis | "((2 + 3) * 4) + 1" | 21 | Normal | Expresión válida con múltiples niveles de anidación que ejercita el flujo regular del evaluador. |
+| tests/test_evaluator.py::test_suma_y_resta_combinadas | "10 + 5 - 3" | 12 | Normal | Flujo regular de sumas y restas con operadores en el mismo nivel sin anidaciones complejas. |
+| tests/test_evaluator.py::test_resta_encadenada_asociatividad_izquierda | "10 - 3 - 2" | 5 | Frontera | Encadenamiento de operadores de la misma precedencia; prueba si se asocian a la izquierda como exige la semántica declarada. |
+| tests/test_evaluator.py::test_division_decimal_exacta | "10 / 4" | 2.5 | Frontera | Verifica que la división produzca un valor real no entero según la semántica (float). |
+| tests/test_evaluator.py::test_numero_con_ceros_a_la_izquierda | "007 + 3" | 10 | Frontera | Caso límite en la representación de enteros: 007 debe interpretarse como 7. |
+| tests/test_evaluator.py::test_division_entre_cero | "10 / 0" | ErrorDeEvaluacion | Frontera | Caso límite matemático; debe lanzar el error semántico propio del intérprete. |
+| tests/test_evaluator.py::test_menos_unario_no_soportado | "-3" | ErrorDeSintaxis | Inválida | La especificación declara que no existe el menos unario, debiendo rechazarse con ErrorDeSintaxis. |
+| tests/test_evaluator.py::test_parentesis_sin_cerrar | "(3 + 4" | ErrorDeSintaxis | Inválida | Entrada mal formada sintácticamente; debe reportarse como ErrorDeSintaxis y no con una excepción de Python. |
 
 ---
 
