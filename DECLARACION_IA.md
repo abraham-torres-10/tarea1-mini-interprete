@@ -116,4 +116,4 @@ Anotar primero nuestros propios casos de prueba base antes de abrir la IA, utili
 | Nombre | Número de cuenta |
 |Madrigal Ronces Baruc Santiago|323083595|
 |Ledesma Rodriguez Alexa|323156240|
-|Torres Trejo Abraham| |
+|Torres Trejo Abraham|426007773|
