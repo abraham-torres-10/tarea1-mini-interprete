@@ -1,12 +1,13 @@
 # Análisis — Tarea 1
 
-**Integrantes:**
+Integrantes:
 1.Ledesma Rodriguez Alexa
 2.Torres Trejo Abraham
 3.Madrigal Ronces Baruc Santiago 
 
-**Fork:**
-**Rama:**
+Fork: https://github.com/abraham-torres-10/tarea1-mini-interprete.git
+
+Rama: tarea1-pruebas-refactorizacion
 
 > Contesten en este archivo. Respuestas breves y concretas: se califica que
 > hayan entendido, no la extensión.
@@ -67,7 +68,7 @@
 > sí. Cuando terminen, léanla como columna, no como renglones, y pregúntense
 > qué combinación **no aparece nunca**.
 
-### 2.2 ¿Qué comportamientos **no** estaban probados?
+### 2.2 ¿Qué comportamientos no estaban probados?
 
 > Ésta es la pregunta importante de toda la tarea. Tómense su tiempo.
 
@@ -94,14 +95,14 @@
 
 ### 4.1 ¿Qué defecto reveló primero una prueba nueva?
 
-El defecto principal revelado fue la **asociatividad incorrecta (a la derecha en vez de a la izquierda)** en operadores de la misma precedencia. Al evaluar una resta encadenada como `"10 - 3 - 2"`, el parser la agrupaba recursivamente hacia la derecha como `10 - (3 - 2)` dando `9`. 
+El defecto principal revelado fue la asociatividad incorrecta (a la derecha en vez de a la izquierda) en operadores de la misma precedencia. Al evaluar una resta encadenada como `"10 - 3 - 2"`, el parser la agrupaba recursivamente hacia la derecha como `10 - (3 - 2)` dando `9`. 
 Adicionalmente, se reveló un segundo defecto: ante expresiones con paréntesis abiertos sin cerrar (como `"(3 + 4"`), el parser intentaba leer más allá de la lista de tokens arrojando un error interno de Python (`IndexError: list index out of range`).
 
 ### 4.2 ¿Por qué el comportamiento observado era incorrecto?
 
-Comparado directamente contra la tabla de **Semántica declarada** (Sección 7 del `README.md`):
-1. **Regla de Asociatividad:** *"los operadores de la misma precedencia se asocian a la izquierda"*. El código original hacía llamadas recursivas en `derecha = self._expresion()` y `derecha = self._termino()`, construyendo árboles sesgados a la derecha.
-2. **Regla de Entrada inválida:** *"debe rechazarse con ErrorDeSintaxis, nunca con un error de Python"*. Dejar escapar un `IndexError` incumple el contrato de manejo de errores del intérprete.
+Comparado directamente contra la tabla de Semántica declarada (Sección 7 del `README.md`):
+1. Regla de Asociatividad: *"los operadores de la misma precedencia se asocian a la izquierda"*. El código original hacía llamadas recursivas en `derecha = self._expresion()` y `derecha = self._termino()`, construyendo árboles sesgados a la derecha.
+2. Regla de Entrada inválida: *"debe rechazarse con ErrorDeSintaxis, nunca con un error de Python"*. Dejar escapar un `IndexError` incumple el contrato de manejo de errores del intérprete.
 
 ### 4.3 ¿Qué cambio realizaron?
 
@@ -118,58 +119,55 @@ En `src/mini_interprete/parser.py`:
 
 Porque la solución implementa de forma exacta la gramática declarada en el encabezado de `parser.py`:`expresion := termino (('+' | '-') termino)*`.
 El ciclo while permite encadenar cualquier cantidad de operaciones seguidas (como a - b - c - d ...), agrupándolas de izquierda a derecha de forma general, sin trucos ni reglas especiales para casos particulares. Todas las 13 pruebas iniciales y las 8 nuevas pasan con éxito.
+
 ---
 
 ## 5. Diseño
 
 ### 5.1 ¿Qué duplicación o señal de mal diseño encontraron?
 
-1. **Duplicación de código algorítmico en `Parser` (`_expresion` vs `_termino`):**
-   Ambos métodos repetían exactamente la misma lógica de control para operadores binarios asociativos a la izquierda: evaluar el término base, verificar en un bucle si el siguiente token coincide con una tupla de operadores, avanzar consumiendo el operador, evaluar el subárbol derecho en el nivel inferior y reasignar el subárbol acumulado a la izquierda. Lo único que cambiaba era la tupla de operadores (`OPERADORES_SUMA` vs `OPERADORES_PRODUCTO`) y la función del nivel inferior llamada (`_termino` vs `_factor`). Esto violaba el principio DRY (*Don't Repeat Yourself*).
+1. Duplicación de código algorítmico en `Parser` (`_expresion` & `_termino`):
 
-2. **Rigidez y condicionales repetidos en `evaluator.py` (Violación de Open-Closed Principle):**
-   En `evaluar()`, la ejecución de cada operación matemática dependía de una serie de condicionales `if nodo.operador == "+": ... if nodo.operador == "-": ...`. Esta estructura es rígida: para extender el sistema con una nueva operación aritmética es necesario modificar directamente el método existente añadiendo más bifurcaciones en lugar de extenderlo mediante una estructura como una tabla de despacho (diccionario de funciones).
+   Ambos metodos tienen exactamente la misma estructura linea por linea: ambos primero leen el subarbol izquierdo llamando a la regla del nivel inferior, ejecutan un bucle while para ver si el token siguiente pertenece a un grupo de operadores, leen el operador + o - y pasan al siguiente elemento para continuar con la lectura, leen el subarbol izquierdo y acumulan el resultado en un nuevo nodo "Operacion binaria", esto viola el principio DRY, Si se quisiera cambiar la forma en la que s econstruyen los nodos binarios, habria que reaplicar el cambio en multiples lugares. 
 
-3. **Amplificación del cambio (*Shotgun Surgery*):**
-   Agregar un simple operador aritmético nuevo requiere tocar prácticamente todos los módulos del proyecto: `tokens.py` (definición del enum), `lexer.py` (asociación de símbolo textual), `parser.py` (reglas gramaticales y precedencia) y `evaluator.py` (evaluación numérica).
+2. Condicionales repetidos en evaluator.py
+
+   En la función evaluar() había un if distinto para cada operador (+, -, *, /). Eso hace que el código sea poco flexible: cada vez que se quiera agregar una operación nueva hay que meter otro if dentro de una función que ya funciona. Es más limpio tener una tabla (un diccionario) que relacione cada símbolo con su operación, de modo que agregar un operador sea solo agregar una línea.
+
+3. Para hacer un cambio pequeño se modifican muchos archivos 
+
+   Agregar un operador nuevo, por ejemplo %, obliga a tocar varios archivos: tokens.py (definir el tipo de token), lexer.py (reconocer el símbolo), parser.py (decidir en qué nivel de precedencia va) y evaluator.py (calcular el resultado). Para un cambio tan pequeño son demasiados lugares, y es fácil olvidar uno. La refactorización reduce este problema solo en el evaluador, que ahora necesita una sola línea. En los demás archivos la información del operador sigue repartida.
 
 ### 5.2 ¿Qué refactorización realizaron, y por qué conserva el comportamiento?
 
-Se aplicó la técnica **Extract Method** en [parser.py](file:///home/abraham/tercero/modelado/tarea1-mini-interprete/src/mini_interprete/parser.py), creando un método auxiliar generalizado:
-```python
-def _binaria(self, regla_siguiente, operadores):
-    izquierda = regla_siguiente()
-    while self._actual() is not None and self._actual().tipo in operadores:
-        operador = self._avanzar()
-        derecha = regla_siguiente()
-        izquierda = OperacionBinaria(operador.valor, izquierda, derecha)
-    return izquierda
-```
-Con esto, `_expresion()` y `_termino()` se redujeron a delegar limpiamente en una sola línea pasando su función siguiente y su conjunto de operadores:
-- `_expresion`: `return self._binaria(self._termino, OPERADORES_SUMA)`
-- `_termino`: `return self._binaria(self._factor, OPERADORES_PRODUCTO)`
+Qué se cambió: en evaluar() había un if por cada operador (+, -, *, /). Los sustituimos por una tabla que relaciona cada símbolo con su operación, y ahora el código busca el símbolo en la tabla en lugar de preguntar uno por uno.
 
-**Por qué conserva el comportamiento:**
-El cambio es matemáticamente y algorítmicamente equivalente. `_binaria` ejecuta exactamente la misma secuencia de instrucciones que ejecutaba el código duplicado en el mismo orden: lee el nodo de la izquierda llamando a `regla_siguiente()`, evalúa la condición del `while` con `_actual()`, consume el token con `_avanzar()`, lee la derecha llamando a `regla_siguiente()` y construye la misma instancia de `OperacionBinaria` asignándola a la izquierda. Los 21 casos de prueba pasan sin ninguna alteración.
+Por qué el comportamiento es el mismo:
+
++, - y * hacen el mismo cálculo que antes, solo que mediante operator.add, operator.sub y operator.mul.
+La división conserva la verificación de cero y el mismo mensaje de error (division entre cero).
+Un operador desconocido sigue lanzando el mismo error.
+Se siguen evaluando primero los dos lados y después se aplica el operador.
+
+Cómo lo comprobamos: las pruebas siguen pasando, y comparamos el resultado del código original con el nuevo en varias expresiones y salió igual.
 
 ### 5.3 ¿Sería pertinente usar Factory Method, Adapter o ninguno?
 
-**Respuesta: Ninguno es pertinente.**
+Ninguno es necesario.
 
-- **Adapter:** No aplica. El patrón Adapter se utiliza para permitir que dos clases con interfaces incompatibles colaboren entre sí (comúnmente al integrar bibliotecas de terceros o sistemas legacy). En este intérprete todos los componentes (`lexer`, `parser`, `ast`, `evaluator`) fueron creados para trabajar en conjunto desde el inicio; sus interfaces ya encajan de forma natural y directa (listas de tokens y nodos de AST).
-- **Factory Method:** No aplica. Factory Method es útil cuando la lógica de instanciación debe delegarse a subclases polimórficas que varían según el contexto. En este proyecto la instanciación de nodos (`Numero`, `OperacionBinaria`) y de tokens (`Token`) es directa y concisa mediante sus constructores estándar. Añadir jerarquías de fábricas abstractas y creadores concretos generaría **complejidad accidental** e indirecciones innecesarias sin aportar ningún beneficio real de extensibilidad.
+- Adapter: sirve para conectar dos cosas que no encajan entre sí, por ejemplo cuando usamos una librería externa con otra interfaz. Aquí no hace falta, porque el lexer, el parser y el evaluador los hicimos para trabajar juntos y ya se pasan los datos directamente (tokens y nodos del AST).
 
-Como señala el propio README: *"un patrón que no mejora nada, resta"*. El criterio de diseño en este caso favorece la simplicidad.
+- Factory Method:sirve para dejar que otra clase decida qué objeto crear. Aquí no hace falta, porque los nodos y los tokens se crean directo con su constructor (`Numero(3)`, `Token(...)`). Agregar fábricas solo complicaría el código sin darnos ninguna ventaja.
 
 ### 5.4 ¿Qué parte del sistema sería más difícil de modificar si se agregara un operador nuevo?
 
-Habría que modificar **4 archivos**:
+Habría que modificar 4 archivos:
 1. `tokens.py`: declarar el nuevo valor en `TipoToken` (ej. `MODULO = "MODULO"`).
 2. `lexer.py`: asociar el carácter en el diccionario `SIMBOLOS` (ej. `"%": TipoToken.MODULO`).
 3. `parser.py`: definir su lugar en la gramática y su precedencia.
 4. `evaluator.py`: implementar la operación matemática (ej. `izquierda % derecha`) y validar posibles errores (como módulo entre cero).
 
-**La parte más compleja y sensible es el Parser (`parser.py`)**, porque si el nuevo operador tiene una precedencia distinta a las existentes (por ejemplo, el operador de potencia `^` que tiene mayor precedencia que el producto y además asocia a la derecha), no basta con agregarlo a una tupla existente: es necesario introducir un nuevo nivel jerárquico en la gramática, agregar un nuevo método y ajustar el encadenamiento de llamadas entre niveles.
+La parte más compleja y sensible es el Parser (`parser.py`), porque si el nuevo operador tiene una precedencia distinta a las existentes (por ejemplo, el operador de potencia `^` que tiene mayor precedencia que el producto y además asocia a la derecha), no basta con agregarlo a una tupla existente: es necesario introducir un nuevo nivel jerárquico en la gramática, agregar un nuevo método y ajustar el encadenamiento de llamadas entre niveles.
 
 ---
 
